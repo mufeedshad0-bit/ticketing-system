@@ -84,7 +84,7 @@
 
         <!-- UPDATE -->
         <td>
-          <form action="/update/{{ t[0] }}" method="POST">
+          <form action="{{ url_for('update_ticket', id=t[0]) }}" method="POST">
             <select name="status" class="form-select form-select-sm mb-2">
               <option>Open</option>
               <option>In Progress</option>
