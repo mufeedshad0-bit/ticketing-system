@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "secret123"   # needed for login
+app.secret_key = "secret123"
 
 # Create database
 def init_db():
@@ -33,10 +33,9 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        # simple login (you can change later)
         if username == "admin" and password == "1234":
             session['user'] = username
-            return redirect('/admin')
+            return redirect(url_for('admin'))
         else:
             return "❌ Invalid credentials"
 
@@ -46,15 +45,13 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('user', None)
-    return redirect('/login')
-
+    return redirect(url_for('login'))
 
 # ---------------- HOME ----------------
 
 @app.route('/')
 def home():
     return render_template('form.html')
-
 
 # ---------------- SUBMIT ----------------
 
@@ -76,34 +73,29 @@ def submit():
     conn.commit()
     conn.close()
 
-    return redirect('/')
-
+    return redirect(url_for('home'))
 
 # ---------------- ADMIN ----------------
 
 @app.route('/admin')
 def admin():
-    # 🔐 protect page
     if 'user' not in session:
-        return redirect('/login')
+        return redirect(url_for('login'))
 
     conn = sqlite3.connect('tickets.db')
     cursor = conn.cursor()
-
     cursor.execute("SELECT * FROM tickets")
     tickets = cursor.fetchall()
-
     conn.close()
 
     return render_template('admin.html', tickets=tickets)
-
 
 # ---------------- UPDATE ----------------
 
 @app.route('/update/<int:id>', methods=['POST'])
 def update_ticket(id):
     if 'user' not in session:
-        return redirect('/login')
+        return redirect(url_for('login'))
 
     status = request.form['status']
 
@@ -114,15 +106,14 @@ def update_ticket(id):
     conn.commit()
     conn.close()
 
-    return redirect('/admin')
-
+    return redirect(url_for('admin'))
 
 # ---------------- DELETE ----------------
 
 @app.route('/delete/<int:id>', methods=['POST'])
 def delete_ticket(id):
     if 'user' not in session:
-        return redirect('/login')
+        return redirect(url_for('login'))
 
     conn = sqlite3.connect('tickets.db')
     cursor = conn.cursor()
@@ -131,8 +122,8 @@ def delete_ticket(id):
     conn.commit()
     conn.close()
 
-    return redirect('/admin')
+    return redirect(url_for('admin'))
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run()
