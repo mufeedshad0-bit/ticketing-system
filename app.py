@@ -1,170 +1,232 @@
-from flask import Flask, render_template, request, redirect, session, url_for
-import sqlite3
-from datetime import datetime
 
-app = Flask(__name__)
-app.secret_key = "secret123"
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
 
-# ---------------- DATABASE ----------------
+  <!-- Bootstrap + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
-def get_db():
-    conn = sqlite3.connect('tickets.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+  <style>
+    body {
+      background: #f1f5f9;
+      font-family: 'Segoe UI', sans-serif;
+    }
 
-def init_db():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tickets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT,
-            issue TEXT,
-            priority TEXT,
-            status TEXT,
-            created_at TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    .sidebar {
+      height: 100vh;
+      background: linear-gradient(180deg, #111827, #1f2937);
+      color: white;
+      padding: 20px;
+      position: fixed;
+      width: 230px;
+    }
 
-init_db()
+    .sidebar h4 {
+      margin-bottom: 30px;
+      font-weight: 600;
+    }
 
-# ---------------- LOGIN ----------------
+    .sidebar a {
+      color: #9ca3af;
+      display: block;
+      margin: 12px 0;
+      text-decoration: none;
+      padding: 8px;
+      border-radius: 8px;
+      transition: 0.3s;
+    }
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    .sidebar a:hover {
+      background: #374151;
+      color: white;
+    }
 
-        if username == "admin" and password == "1234":
-            session['user'] = username
-            return redirect(url_for('admin'))
-        else:
-            return "❌ Invalid credentials"
+    .main {
+      margin-left: 250px;
+      padding: 25px;
+    }
 
-    return render_template('login.html')
+    .card-box {
+      border-radius: 15px;
+      padding: 20px;
+      color: white;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      transition: 0.3s;
+    }
 
+    .card-box:hover {
+      transform: translateY(-5px);
+    }
 
-@app.route('/logout')
-def logout():
-    session.pop('user', None)
-    return redirect(url_for('login'))
+    .table {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
 
-# ---------------- HOME ----------------
+    .table th {
+      font-weight: 600;
+    }
 
-@app.route('/')
-def home():
-    return render_template('form.html')
+    .badge {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 20px;
+    }
 
-# ---------------- SUBMIT ----------------
+    .btn {
+      border-radius: 8px;
+    }
 
-@app.route('/submit', methods=['POST'])
-def submit():
-    name = request.form['name']
-    email = request.form['email']
-    issue = request.form['issue']
-    priority = request.form['priority']
+    input, select {
+      border-radius: 8px !important;
+    }
 
-    conn = get_db()
-    cursor = conn.cursor()
+    table tbody tr:hover {
+      background-color: #f9fafb;
+    }
+  </style>
+</head>
 
-    cursor.execute('''
-        INSERT INTO tickets (name, email, issue, priority, status, created_at)
-        VALUES (?, ?, ?, ?, 'Open', ?)
-    ''', (name, email, issue, priority, datetime.now()))
+<body>
 
-    conn.commit()
-    conn.close()
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h4>🎟️ HelpDesk</h4>
 
-    return redirect(url_for('home'))
+  <a href="#" style="background:#374151; color:white;">
+    <i class="bi bi-speedometer2"></i> Dashboard
+  </a>
 
-# ---------------- ADMIN ----------------
+  <a href="#"><i class="bi bi-ticket"></i> Tickets</a>
+  <a href="#"><i class="bi bi-people"></i> Users</a>
+  <a href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+</div>
 
-@app.route('/admin')
-def admin():
-    if 'user' not in session:
-        return redirect(url_for('login'))
+<!-- MAIN CONTENT -->
+<div class="main">
 
-    search = request.args.get('search', '')
-    status_filter = request.args.get('status', '')
+  <h3 class="mb-4">Dashboard</h3>
 
-    conn = get_db()
-    cursor = conn.cursor()
+  <!-- 📊 STATS -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card-box" style="background:linear-gradient(135deg,#1e293b,#334155);">
+        <i class="bi bi-ticket"></i>
+        <h5>Total Tickets</h5>
+        <h3>{{ total }}</h3>
+      </div>
+    </div>
 
-    query = "SELECT * FROM tickets WHERE 1=1"
-    params = []
+    <div class="col-md-3">
+      <div class="card-box" style="background:linear-gradient(135deg,#ef4444,#dc2626);">
+        <i class="bi bi-exclamation-circle"></i>
+        <h5>Open</h5>
+        <h3>{{ open_count }}</h3>
+      </div>
+    </div>
 
-    if search:
-        query += " AND issue LIKE ?"
-        params.append(f"%{search}%")
+    <div class="col-md-3">
+      <div class="card-box" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+        <i class="bi bi-hourglass-split"></i>
+        <h5>In Progress</h5>
+        <h3>{{ progress }}</h3>
+      </div>
+    </div>
 
-    if status_filter:
-        query += " AND status=?"
-        params.append(status_filter)
+    <div class="col-md-3">
+      <div class="card-box" style="background:linear-gradient(135deg,#22c55e,#16a34a);">
+        <i class="bi bi-check-circle"></i>
+        <h5>Resolved</h5>
+        <h3>{{ resolved }}</h3>
+      </div>
+    </div>
+  </div>
 
-    cursor.execute(query, params)
-    tickets = cursor.fetchall()
+  <!-- 🔍 SEARCH -->
+  <form method="GET" class="row mb-3">
+    <div class="col-md-6">
+      <input type="text" name="search" class="form-control" placeholder="Search tickets...">
+    </div>
 
-    # 📊 Dashboard stats
-    cursor.execute("SELECT COUNT(*) FROM tickets")
-    total = cursor.fetchone()[0]
+    <div class="col-md-3">
+      <select name="status" class="form-control">
+        <option value="">All Status</option>
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+    </div>
 
-    cursor.execute("SELECT COUNT(*) FROM tickets WHERE status='Open'")
-    open_count = cursor.fetchone()[0]
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100">Filter</button>
+    </div>
+  </form>
 
-    cursor.execute("SELECT COUNT(*) FROM tickets WHERE status='In Progress'")
-    progress = cursor.fetchone()[0]
+  <!-- 📋 TABLE -->
+  <table class="table table-hover shadow-sm">
+    <thead class="table-light">
+      <tr>
+        <th>ID</th>
+        <th>User</th>
+        <th>Issue</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
 
-    cursor.execute("SELECT COUNT(*) FROM tickets WHERE status='Resolved'")
-    resolved = cursor.fetchone()[0]
+    <tbody>
+      {% for t in tickets %}
+      <tr>
+        <td>#{{ t['id'] }}</td>
 
-    conn.close()
+        <td>
+          <b>{{ t['name'] }}</b><br>
+          <small>{{ t['email'] }}</small>
+        </td>
 
-    return render_template(
-        'admin.html',
-        tickets=tickets,
-        total=total,
-        open_count=open_count,
-        progress=progress,
-        resolved=resolved
-    )
+        <td>{{ t['issue'] }}</td>
 
-# ---------------- UPDATE ----------------
+        <td>
+          <span class="badge bg-secondary">{{ t['priority'] }}</span>
+        </td>
 
-@app.route('/update/<int:id>', methods=['POST'])
-def update_ticket(id):
-    if 'user' not in session:
-        return redirect(url_for('login'))
+        <!-- STATUS -->
+        <td>
+          {% if t['status'] == 'Open' %}
+            <span class="badge bg-danger">Open</span>
+          {% elif t['status'] == 'In Progress' %}
+            <span class="badge bg-warning text-dark">In Progress</span>
+          {% else %}
+            <span class="badge bg-success">Resolved</span>
+          {% endif %}
+        </td>
 
-    status = request.form['status']
+        <!-- ACTIONS -->
+        <td>
+          <form action="{{ url_for('update_ticket', id=t['id']) }}" method="POST" class="d-flex gap-1">
+            <select name="status" class="form-select form-select-sm">
+              <option>Open</option>
+              <option>In Progress</option>
+              <option>Resolved</option>
+            </select>
+            <button class="btn btn-sm btn-primary">✔</button>
+          </form>
 
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE tickets SET status=? WHERE id=?", (status, id))
+          <form action="{{ url_for('delete_ticket', id=t['id']) }}" method="POST" class="mt-1">
+            <button class="btn btn-sm btn-danger w-100">Delete</button>
+          </form>
+        </td>
 
-    conn.commit()
-    conn.close()
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-    return redirect(url_for('admin'))
+</div>
 
-# ---------------- DELETE ----------------
-
-@app.route('/delete/<int:id>', methods=['POST'])
-def delete_ticket(id):
-    if 'user' not in session:
-        return redirect(url_for('login'))
-
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM tickets WHERE id=?", (id,))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for('admin'))
-
-if __name__ == '__main__':
-    app.run()
+</body>
+</html>
