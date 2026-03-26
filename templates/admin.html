@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,14 +8,52 @@
 
 <body>
 
+<!-- NAVBAR -->
 <nav class="navbar navbar-dark bg-dark px-4 d-flex justify-content-between">
-  <span class="navbar-brand">Ticket Admin</span>
+  <span class="navbar-brand">🎟️ Ticket Admin</span>
   <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
 </nav>
 
 <div class="container mt-4">
 
-<table class="table table-bordered">
+<!-- 📊 DASHBOARD CARDS -->
+<div class="row mb-4 text-center">
+  <div class="col">
+    <div class="card bg-dark text-white p-3">Total<br><b>{{ total }}</b></div>
+  </div>
+  <div class="col">
+    <div class="card bg-danger text-white p-3">Open<br><b>{{ open_count }}</b></div>
+  </div>
+  <div class="col">
+    <div class="card bg-warning text-dark p-3">In Progress<br><b>{{ progress }}</b></div>
+  </div>
+  <div class="col">
+    <div class="card bg-success text-white p-3">Resolved<br><b>{{ resolved }}</b></div>
+  </div>
+</div>
+
+<!-- 🔍 SEARCH + FILTER -->
+<form method="GET" class="row mb-3">
+  <div class="col-md-5">
+    <input type="text" name="search" class="form-control" placeholder="Search issue...">
+  </div>
+
+  <div class="col-md-3">
+    <select name="status" class="form-control">
+      <option value="">All Status</option>
+      <option value="Open">Open</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Resolved">Resolved</option>
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <button class="btn btn-primary w-100">Filter</button>
+  </div>
+</form>
+
+<!-- 📋 TABLE -->
+<table class="table table-bordered table-hover">
   <thead class="table-dark">
     <tr>
       <th>ID</th>
@@ -31,34 +70,47 @@
   <tbody>
     {% for t in tickets %}
     <tr>
-      <td>{{ t[0] }}</td>
-      <td>{{ t[1] }}</td>
-      <td>{{ t[2] }}</td>
-      <td>{{ t[3] }}</td>
-      <td>{{ t[4] }}</td>
-      <td>{{ t[5] }}</td>
-
+      <td>{{ t['id'] }}</td>
+      <td>{{ t['name'] }}</td>
+      <td>{{ t['email'] }}</td>
+      <td>{{ t['issue'] }}</td>
       <td>
-        <form action="{{ url_for('update_ticket', id=t[0]) }}" method="POST">
+        <span class="badge bg-secondary">{{ t['priority'] }}</span>
+      </td>
+
+      <!-- 🎨 STATUS COLORS -->
+      <td>
+        {% if t['status'] == 'Open' %}
+          <span class="badge bg-danger">Open</span>
+        {% elif t['status'] == 'In Progress' %}
+          <span class="badge bg-warning text-dark">In Progress</span>
+        {% else %}
+          <span class="badge bg-success">Resolved</span>
+        {% endif %}
+      </td>
+
+      <!-- UPDATE -->
+      <td>
+        <form action="{{ url_for('update_ticket', id=t['id']) }}" method="POST">
           <select name="status" class="form-control mb-1">
             <option>Open</option>
             <option>In Progress</option>
-            <option>Closed</option>
+            <option>Resolved</option>
           </select>
-          <button class="btn btn-primary btn-sm">Update</button>
+          <button class="btn btn-primary btn-sm w-100">Update</button>
         </form>
       </td>
 
+      <!-- DELETE -->
       <td>
-        <form action="{{ url_for('delete_ticket', id=t[0]) }}" method="POST">
-          <button class="btn btn-danger btn-sm">Delete</button>
+        <form action="{{ url_for('delete_ticket', id=t['id']) }}" method="POST">
+          <button class="btn btn-danger btn-sm w-100">Delete</button>
         </form>
       </td>
 
     </tr>
     {% endfor %}
   </tbody>
-
 </table>
 
 </div>
