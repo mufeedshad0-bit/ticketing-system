@@ -94,7 +94,7 @@
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <h4>🎟️ HelpDesk</h4>
+  <h4>HelpDesk</h4>
 
   <a href="#" style="background:#374151; color:white;">
     <i class="bi bi-speedometer2"></i> Dashboard
