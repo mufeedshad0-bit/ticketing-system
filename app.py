@@ -5,9 +5,15 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# Create database
-def init_db():
+# ---------------- DATABASE ----------------
+
+def get_db():
     conn = sqlite3.connect('tickets.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS tickets (
@@ -62,7 +68,7 @@ def submit():
     issue = request.form['issue']
     priority = request.form['priority']
 
-    conn = sqlite3.connect('tickets.db')
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute('''
@@ -82,13 +88,49 @@ def admin():
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect('tickets.db')
+    search = request.args.get('search', '')
+    status_filter = request.args.get('status', '')
+
+    conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tickets")
+
+    query = "SELECT * FROM tickets WHERE 1=1"
+    params = []
+
+    if search:
+        query += " AND issue LIKE ?"
+        params.append(f"%{search}%")
+
+    if status_filter:
+        query += " AND status=?"
+        params.append(status_filter)
+
+    cursor.execute(query, params)
     tickets = cursor.fetchall()
+
+    # 📊 Dashboard stats
+    cursor.execute("SELECT COUNT(*) FROM tickets")
+    total = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM tickets WHERE status='Open'")
+    open_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM tickets WHERE status='In Progress'")
+    progress = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM tickets WHERE status='Resolved'")
+    resolved = cursor.fetchone()[0]
+
     conn.close()
 
-    return render_template('admin.html', tickets=tickets)
+    return render_template(
+        'admin.html',
+        tickets=tickets,
+        total=total,
+        open_count=open_count,
+        progress=progress,
+        resolved=resolved
+    )
 
 # ---------------- UPDATE ----------------
 
@@ -99,7 +141,7 @@ def update_ticket(id):
 
     status = request.form['status']
 
-    conn = sqlite3.connect('tickets.db')
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("UPDATE tickets SET status=? WHERE id=?", (status, id))
 
@@ -115,7 +157,7 @@ def delete_ticket(id):
     if 'user' not in session:
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect('tickets.db')
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM tickets WHERE id=?", (id,))
 
@@ -123,7 +165,6 @@ def delete_ticket(id):
     conn.close()
 
     return redirect(url_for('admin'))
-
 
 if __name__ == '__main__':
     app.run()
